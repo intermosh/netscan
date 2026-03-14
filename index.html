@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NETSCAN</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --g: #00ff41; --gd: #00cc33; --gk: #009922; --gg: rgba(0,255,65,0.3);
+            --bg: #0a0a0a; --bg2: #0d0d0d; --bdr: #00ff4133;
+            --red: #ff3333; --yel: #ffcc00; --cyn: #00ffcc; --mag: #ff44cc; --org: #ff8844;
+        }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            background: var(--bg); color: var(--g); display: flex; flex-direction: column;
+        }
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 9999;
+            background: repeating-linear-gradient(0deg, rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 1px, transparent 1px, transparent 3px);
+        }
+
+        /* === TOP BAR === */
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 6px 12px; border-bottom: 1px solid var(--gk); background: var(--bg2);
+            font-size: 11px; flex-shrink: 0; gap: 10px;
+        }
+        .topbar-title { color: var(--g); letter-spacing: 2px; font-size: 12px; white-space: nowrap; }
+        .topbar-title span { color: var(--gk); }
+        .topbar-mid { display: flex; align-items: center; gap: 12px; flex: 1; justify-content: center; }
+        .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
+        .dot-on { background: var(--g); box-shadow: 0 0 4px var(--g); }
+        .dot-off { background: var(--gk); }
+        .dot-scan { background: var(--yel); box-shadow: 0 0 4px var(--yel); animation: blink 1s infinite; }
+        .dot-err { background: var(--red); box-shadow: 0 0 4px var(--red); }
+        @keyframes blink { 0%,50%{opacity:1}51%,100%{opacity:0} }
+        #proxyTag { padding: 1px 6px; border: 1px solid var(--gk); font-size: 10px; color: var(--gk); }
+        #proxyTag.active { border-color: var(--cyn); color: var(--cyn); }
+
+        /* === MAIN LAYOUT === */
+        .main { display: flex; flex: 1; overflow: hidden; }
+        .sidebar {
+            width: 340px; min-width: 340px; border-right: 1px solid var(--gk);
+            display: flex; flex-direction: column; overflow-y: auto; background: var(--bg2);
+        }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-track { background: var(--bg); }
+        .sidebar::-webkit-scrollbar-thumb { background: var(--gk); }
+        .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* === SIDEBAR SECTIONS === */
+        .sec { border-bottom: 1px solid var(--gk); }
+        .sec-head {
+            padding: 5px 10px; font-size: 10px; letter-spacing: 2px; color: var(--gd);
+            background: rgba(0,255,65,0.02); border-bottom: 1px solid rgba(0,255,65,0.08);
+            cursor: pointer; user-select: none; display: flex; justify-content: space-between;
+        }
+        .sec-head:hover { color: var(--g); }
+        .sec-head.cyan { color: var(--cyn); }
+        .sec-head.mag { color: var(--mag); }
+        .sec-body { padding: 8px 10px; }
+
+        label { display: block; font-size: 9px; color: var(--gk); letter-spacing: 1px; margin-bottom: 3px; }
+        input, select {
+            background: var(--bg); border: 1px solid var(--gk); color: var(--g);
+            padding: 5px 8px; font-family: inherit; font-size: 12px; width: 100%; outline: none;
+        }
+        input:focus, select:focus { border-color: var(--g); box-shadow: 0 0 6px var(--gg); }
+        input::placeholder { color: #224422; }
+        select option { background: var(--bg); color: var(--g); }
+        .row { display: flex; gap: 6px; margin-bottom: 6px; }
+        .row > * { flex: 1; }
+        .fg { margin-bottom: 6px; }
+
+        /* === BUTTONS === */
+        .btn {
+            background: transparent; border: 1px solid var(--gk); color: var(--gd);
+            padding: 4px 10px; font-family: inherit; font-size: 10px; letter-spacing: 1px;
+            cursor: pointer; transition: all 0.15s; text-transform: uppercase; white-space: nowrap;
+        }
+        .btn:hover { border-color: var(--g); color: var(--g); background: rgba(0,255,65,0.05); }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn-go { border-color: var(--g); color: var(--g); }
+        .btn-stop { border-color: var(--red); color: var(--red); }
+        .btn-stop:hover { background: rgba(255,0,0,0.05); }
+        .btn-cyan { border-color: var(--cyn); color: var(--cyn); }
+        .btn-cyan:hover { background: rgba(0,255,204,0.05); }
+        .btn-mag { border-color: var(--mag); color: var(--mag); }
+        .btn-mag:hover { background: rgba(255,68,204,0.05); }
+        .btns { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+        .presets { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+        .preset {
+            background: transparent; border: 1px solid #1a3a1a; color: #336633;
+            padding: 2px 6px; font-family: inherit; font-size: 9px; cursor: pointer;
+        }
+        .preset:hover { border-color: var(--gd); color: var(--gd); }
+
+        /* === STATS BAR === */
+        .statsbar {
+            display: flex; border-bottom: 1px solid var(--gk); font-size: 10px;
+            background: var(--bg2); flex-shrink: 0;
+        }
+        .stat {
+            flex: 1; text-align: center; padding: 4px 0; border-right: 1px solid rgba(0,255,65,0.08);
+        }
+        .stat:last-child { border-right: none; }
+        .stat-val { color: var(--g); font-size: 14px; }
+        .stat-lbl { color: var(--gk); font-size: 8px; letter-spacing: 1px; }
+
+        /* === PROGRESS === */
+        .progbar {
+            flex-shrink: 0; padding: 4px 10px; border-bottom: 1px solid var(--gk);
+            display: none; font-size: 10px; background: var(--bg2);
+        }
+        .progbar.active { display: block; }
+        .prog-track { background: var(--bg); border: 1px solid var(--gk); height: 10px; margin: 3px 0; }
+        .prog-fill { height: 100%; background: linear-gradient(90deg, var(--gk), var(--g)); width: 0%; transition: width 0.3s; }
+        .prog-info { display: flex; justify-content: space-between; color: var(--gk); font-size: 9px; }
+
+        /* === TERMINAL === */
+        .term { flex: 1; overflow-y: auto; padding: 6px 10px; font-size: 11px; line-height: 1.6; background: var(--bg); }
+        .term::-webkit-scrollbar { width: 4px; }
+        .term::-webkit-scrollbar-track { background: var(--bg); }
+        .term::-webkit-scrollbar-thumb { background: var(--gk); }
+        .term-head {
+            padding: 4px 10px; font-size: 9px; color: var(--gk); letter-spacing: 1px;
+            border-bottom: 1px solid rgba(0,255,65,0.08); background: var(--bg2); flex-shrink: 0;
+            display: flex; justify-content: space-between;
+        }
+        .lt { color: var(--gk); }
+        .li { color: var(--g); }
+        .ls { color: var(--cyn); }
+        .lw { color: var(--yel); }
+        .le { color: var(--red); }
+        .lm { color: var(--mag); }
+        .lk { color: var(--gd); }
+
+        /* === RESULTS PANEL === */
+        .results-panel {
+            border-top: 1px solid var(--gk); overflow-y: auto; display: none; background: var(--bg);
+        }
+        .results-panel.active { display: block; }
+        .results-panel::-webkit-scrollbar { width: 4px; }
+        .results-panel::-webkit-scrollbar-track { background: var(--bg); }
+        .results-panel::-webkit-scrollbar-thumb { background: var(--gk); }
+        .res-head {
+            padding: 4px 10px; font-size: 9px; color: var(--gk); letter-spacing: 1px;
+            border-bottom: 1px solid rgba(0,255,65,0.08); background: var(--bg2);
+            display: flex; justify-content: space-between; position: sticky; top: 0; z-index: 1;
+        }
+        .res-grid { display: flex; flex-direction: column; gap: 1px; }
+
+        .rcard { border-bottom: 1px solid rgba(0,255,65,0.06); background: var(--bg2); }
+        .rcard-row {
+            display: flex; align-items: center; gap: 6px; padding: 5px 10px; font-size: 11px;
+        }
+        .rcard-ip { color: var(--cyn); min-width: 140px; }
+        .rcard-info { color: var(--gd); flex: 1; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .rcard-tag { font-size: 8px; padding: 1px 5px; border: 1px solid var(--yel); color: var(--yel); }
+        .rcard-btns { display: flex; gap: 3px; }
+        .rcard-btns .btn { padding: 2px 6px; font-size: 9px; }
+
+        .rcard-detail { padding: 0 10px 6px 10px; font-size: 10px; display: none; }
+        .rcard-detail.open { display: block; }
+        .rcard-preview { width: 100%; max-height: 120px; background: var(--bg); border: 1px solid var(--gk); display: flex; align-items: center; justify-content: center; margin-bottom: 4px; overflow: hidden; }
+        .rcard-preview img { max-width: 100%; max-height: 120px; object-fit: contain; }
+        .rcard-meta { color: var(--gk); font-size: 9px; line-height: 1.5; }
+
+        /* === CRED SECTION IN CARD === */
+        .cred-box { border: 1px solid rgba(255,68,204,0.2); padding: 6px 8px; margin-top: 4px; background: rgba(255,68,204,0.02); }
+        .cred-brand { color: var(--org); font-size: 11px; }
+        .cred-conf { font-size: 8px; padding: 1px 4px; border: 1px solid; }
+        .cred-conf.HIGH { border-color: var(--g); color: var(--g); }
+        .cred-conf.MEDIUM { border-color: var(--yel); color: var(--yel); }
+        .cred-conf.LOW { border-color: var(--red); color: var(--red); }
+        .cred-tbl { width: 100%; font-size: 10px; border-collapse: collapse; margin-top: 3px; }
+        .cred-tbl th { text-align: left; color: var(--gk); padding: 2px 6px; font-size: 9px; }
+        .cred-tbl td { padding: 2px 6px; }
+        .cred-tbl .u { color: var(--cyn); }
+        .cred-tbl .p { color: var(--yel); }
+        .cred-tbl .e { color: var(--gk); font-style: italic; }
+
+        /* === IDENTIFY RESULT INLINE === */
+        #identifyResult { font-size: 10px; margin-top: 6px; }
+
+        /* === CRED DB POPUP === */
+        .creddb-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 100; display: none;
+            align-items: center; justify-content: center;
+        }
+        .creddb-overlay.active { display: flex; }
+        .creddb-box {
+            width: 80%; max-width: 900px; max-height: 80vh; background: var(--bg2);
+            border: 1px solid var(--mag); overflow-y: auto; padding: 15px;
+        }
+        .creddb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; margin-top: 10px; }
+        .creddb-card { border: 1px solid rgba(255,68,204,0.15); padding: 8px; background: rgba(0,0,0,0.3); font-size: 10px; }
+        .creddb-card .brand { color: var(--org); font-size: 11px; margin-bottom: 3px; }
+        .creddb-card .cl { color: var(--gd); padding: 1px 0; }
+        .creddb-card .cl .u { color: var(--cyn); }
+        .creddb-card .cl .p { color: var(--yel); }
+
+        /* Split content into terminal + results */
+        .content-split { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* Auto scan indicator */
+        .auto-ind { display: inline-block; color: var(--yel); font-size: 9px; animation: blink 1.5s infinite; }
+
+        /* Resize handle hint */
+        .resize-hint { color: var(--gk); font-size: 9px; padding: 2px 10px; text-align: center; cursor: row-resize; border-top: 1px solid rgba(0,255,65,0.08); flex-shrink: 0; }
+        .resize-hint:hover { color: var(--gd); }
+    </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+    <div class="topbar-title">NETSCAN v1.0<span>// tcp port scanner + webcam fingerprint + credential lookup</span></div>
+    <div class="topbar-mid">
+        <span><span class="dot dot-on" id="statusDot"></span><span id="statusText">INIT</span></span>
+        <span id="proxyTag">PROXY: --</span>
+    </div>
+    <div id="clock" style="color:var(--gk)"></div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+
+        <!-- 1. TARGET -->
+        <div class="sec">
+            <div class="sec-head" onclick="toggleSec(this)">TARGET RANGE <span>-</span></div>
+            <div class="sec-body">
+                <div class="row">
+                    <div class="fg"><label>IP START</label><input type="text" id="ipStart" placeholder="192.168.1.1"></div>
+                    <div class="fg"><label>IP END</label><input type="text" id="ipEnd" placeholder="192.168.1.254"></div>
+                </div>
+                <div class="fg">
+                    <label>CIDR</label>
+                    <div style="display:flex;gap:4px;">
+                        <input type="text" id="cidrInput" placeholder="e.g. 85.120.40.0/24">
+                        <button class="btn" onclick="parseCIDR()">APPLY</button>
+                    </div>
+                </div>
+                <div class="presets">
+                    <button class="preset" onclick="setRange('192.168.1.1','192.168.1.254')">LAN /24</button>
+                    <button class="preset" onclick="setRange('10.0.0.1','10.0.0.254')">10.0.0.x</button>
+                    <button class="preset" onclick="setRange('172.16.0.1','172.16.0.254')">172.16.x</button>
+                    <button class="preset" onclick="generateRandomRange()">RANDOM</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. CONFIG -->
+        <div class="sec">
+            <div class="sec-head" onclick="toggleSec(this)">SCAN CONFIG <span>-</span></div>
+            <div class="sec-body">
+                <div class="row">
+                    <div class="fg"><label>PORT</label><input type="number" id="targetPort" value="80" min="1" max="65535"></div>
+                    <div class="fg"><label>TIMEOUT MS</label><input type="number" id="timeout" value="2000" min="200" max="10000" step="100"></div>
+                    <div class="fg"><label>THREADS</label><input type="number" id="threads" value="50" min="1" max="200"></div>
+                </div>
+                <div class="fg">
+                    <label>CAM PATHS (preview)</label>
+                    <input type="text" id="camPaths" value="/mjpg/video.mjpg, /snap.jpg, /shot.jpg, /jpg/image.jpg, /cgi-bin/mjpg/video.cgi, /snapshot.jpg" style="font-size:9px;">
+                </div>
+                <div class="btns">
+                    <button class="btn btn-go" id="btnScan" onclick="startScan()">SCAN</button>
+                    <button class="btn btn-stop" id="btnStop" onclick="stopScan()" disabled>STOP</button>
+                    <button class="btn" onclick="clearAll()">CLEAR</button>
+                    <button class="btn" onclick="exportResults('txt')">EXP TXT</button>
+                    <button class="btn" onclick="exportResults('json')">EXP JSON</button>
+                    <button class="btn" onclick="exportResults('csv')">EXP CSV</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. RANDOM SCANNER -->
+        <div class="sec">
+            <div class="sec-head cyan" onclick="toggleSec(this)">RANDOM SCANNER <span>-</span></div>
+            <div class="sec-body">
+                <div class="row">
+                    <div class="fg"><label>BLOCK</label>
+                        <select id="randomBlockSize">
+                            <option value="24">/24 (256)</option>
+                            <option value="23">/23 (512)</option>
+                            <option value="22">/22 (1024)</option>
+                            <option value="20">/20 (4096)</option>
+                        </select>
+                    </div>
+                    <div class="fg"><label>ROUNDS</label>
+                        <select id="randomRounds">
+                            <option value="1">1</option>
+                            <option value="3">3</option>
+                            <option value="5" selected>5</option>
+                            <option value="10">10</option>
+                            <option value="0">INF</option>
+                        </select>
+                    </div>
+                    <div class="fg"><label>AUTO-ID</label>
+                        <select id="autoIdentify">
+                            <option value="1" selected>YES</option>
+                            <option value="0">NO</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="btns">
+                    <button class="btn btn-cyan" id="btnRandom" onclick="startRandomScan()">RANDOM SCAN</button>
+                    <button class="btn" onclick="generateRandomRange()">GENERATE</button>
+                    <button class="btn btn-stop" id="btnStopRandom" onclick="stopRandomScan()" disabled>STOP</button>
+                </div>
+                <div id="randomStats" style="display:none; margin-top:5px; font-size:9px; color:var(--cyn);">
+                    ROUND: <span id="randomRound">0/0</span> | SCANNED: <span id="randomRangesScanned">0</span> | FOUND: <span id="randomTotalFound">0</span>
+                    <span id="autoScanInd" class="auto-ind" style="display:none;"> [SCANNING]</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. CAM IDENTIFIER -->
+        <div class="sec">
+            <div class="sec-head mag" onclick="toggleSec(this)">CAM IDENTIFIER <span>-</span></div>
+            <div class="sec-body">
+                <div class="row">
+                    <div class="fg"><label>IP</label><input type="text" id="identifyIP" placeholder="x.x.x.x"></div>
+                    <div class="fg" style="max-width:70px;"><label>PORT</label><input type="number" id="identifyPort" value="80"></div>
+                </div>
+                <div class="btns">
+                    <button class="btn btn-mag" onclick="identifyCamera()" id="btnIdentify">IDENTIFY</button>
+                    <button class="btn btn-mag" onclick="identifyAllFound()" id="btnIdentifyAll">ID ALL</button>
+                    <button class="btn" onclick="toggleCredDB()">CRED DB</button>
+                </div>
+                <div id="identifyResult"></div>
+            </div>
+        </div>
+
+    </div><!-- /sidebar -->
+
+    <!-- CONTENT -->
+    <div class="content">
+        <!-- STATS BAR -->
+        <div class="statsbar">
+            <div class="stat"><div class="stat-val" id="statTotal">0</div><div class="stat-lbl">TOTAL</div></div>
+            <div class="stat"><div class="stat-val" id="statScanned">0</div><div class="stat-lbl">SCANNED</div></div>
+            <div class="stat"><div class="stat-val" id="statFound">0</div><div class="stat-lbl">FOUND</div></div>
+            <div class="stat"><div class="stat-val" id="statElapsed">00:00</div><div class="stat-lbl">TIME</div></div>
+        </div>
+
+        <!-- PROGRESS -->
+        <div class="progbar" id="progressSection">
+            <div style="display:flex;justify-content:space-between;">
+                <span><span id="currentIP" style="color:var(--cyn);">--</span></span>
+                <span id="progressPercent">0%</span>
+            </div>
+            <div class="prog-track"><div class="prog-fill" id="progressBar"></div></div>
+            <div class="prog-info">
+                <span><span id="progressScanned">0</span>/<span id="progressTotal">0</span></span>
+                <span><span id="scanSpeed">0</span> ip/s</span>
+                <span>ETA <span id="eta">--:--</span></span>
+            </div>
+        </div>
+
+        <!-- SPLIT: TERMINAL + RESULTS -->
+        <div class="content-split">
+            <!-- TERMINAL -->
+            <div style="display:flex; flex-direction:column; flex:1; min-height:0;">
+                <div class="term-head">
+                    <span>output://scan.log</span>
+                    <span id="logCount">0 lines</span>
+                </div>
+                <div class="term" id="terminalBody"></div>
+            </div>
+            <!-- RESULTS -->
+            <div class="results-panel" id="resultsPanel">
+                <div class="res-head">
+                    <span>RESULTS: <span id="resultCount">0</span></span>
+                    <span style="cursor:pointer;" onclick="toggleResultsPanel()">[ TOGGLE ]</span>
+                </div>
+                <div class="res-grid" id="resultsGrid"></div>
+            </div>
+        </div>
+    </div><!-- /content -->
+
+</div><!-- /main -->
+
+<!-- CRED DB OVERLAY -->
+<div class="creddb-overlay" id="credDBOverlay" onclick="if(event.target===this)toggleCredDB()">
+    <div class="creddb-box" id="credDBPanel"></div>
+</div>
+
+<script>
+    // ===== STATE =====
+    let scanning = false, results = [], scanStartTime = null, scannedCount = 0, totalIPs = 0;
+    let timerInterval = null, proxyAvailable = false, statusPollInterval = null, resultsOffset = 0;
+    let randomScanning = false, randomRoundsLeft = 0, randomTotalRounds = 0, randomRangesScanned = 0, randomTotalFound = 0;
+    let credDBLoaded = false, credDBVisible = false, logLines = 0;
+    const PROXY_BASE = 'http://localhost:8888';
+
+    // ===== UI HELPERS =====
+    function toggleSec(el) {
+        const body = el.nextElementSibling;
+        const sp = el.querySelector('span');
+        if (body.style.display === 'none') { body.style.display = ''; sp.textContent = '-'; }
+        else { body.style.display = 'none'; sp.textContent = '+'; }
+    }
+
+    function toggleResultsPanel() {
+        const p = document.getElementById('resultsPanel');
+        const grid = document.getElementById('resultsGrid');
+        grid.style.display = grid.style.display === 'none' ? '' : 'none';
+    }
+
+    // Clock
+    function updateClock() {
+        const n = new Date();
+        document.getElementById('clock').textContent = n.toLocaleTimeString('en', { hour12: false });
+    }
+    setInterval(updateClock, 1000); updateClock();
+
+    // ===== PROXY =====
+    async function checkProxy() {
+        const tag = document.getElementById('proxyTag');
+        try {
+            const c = new AbortController();
+            const t = setTimeout(() => c.abort(), 3000);
+            const r = await fetch(PROXY_BASE + '/api/ping', { signal: c.signal, mode: 'cors' });
+            clearTimeout(t);
+            const d = await r.json();
+            if (d.status === 'ok') {
+                proxyAvailable = true;
+                tag.textContent = 'PROXY: ACTIVE';
+                tag.className = 'active';
+                tag.id = 'proxyTag';
+                log('proxy server detected at ' + PROXY_BASE, 's');
+                log('mode: TCP + fingerprint + credential lookup', 'i');
+                return true;
+            }
+        } catch(e) {}
+        proxyAvailable = false;
+        tag.textContent = 'PROXY: OFF';
+        log('proxy not detected - run: python server.py', 'w');
+        log('browser mode: limited scan capability', 'w');
+        return false;
+    }
+
+    // ===== STATUS =====
+    function setStatus(text, type) {
+        document.getElementById('statusText').textContent = text;
+        const d = document.getElementById('statusDot');
+        d.className = 'dot ' + ({active:'dot-on',scanning:'dot-scan',error:'dot-err',inactive:'dot-off'}[type] || 'dot-on');
+    }
+
+    // ===== LOGGING =====
+    function log(msg, type = 'i') {
+        const body = document.getElementById('terminalBody');
+        const cls = {i:'li', s:'ls', w:'lw', e:'le', k:'lk', m:'lm', system:'lk', info:'li', success:'ls', warning:'lw', error:'le', identify:'lm'}[type] || 'li';
+        const t = new Date().toLocaleTimeString('en', { hour12: false });
+        const line = document.createElement('div');
+        line.className = cls;
+        line.innerHTML = `<span class="lt">${t}</span> ${msg}`;
+        body.appendChild(line);
+        body.scrollTop = body.scrollHeight;
+        logLines++;
+        document.getElementById('logCount').textContent = logLines + ' lines';
+    }
+
+    // ===== IP UTILS =====
+    function validateIP(ip) {
+        const p = ip.split('.');
+        if (p.length !== 4) return false;
+        return p.every(x => { const n = parseInt(x); return n >= 0 && n <= 255 && x === String(n); });
+    }
+    function ipToLong(ip) { const p = ip.split('.').map(Number); return ((p[0]<<24)|(p[1]<<16)|(p[2]<<8)|p[3])>>>0; }
+    function longToIp(n) { return [(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255].join('.'); }
+
+    function parseCIDR() {
+        const input = document.getElementById('cidrInput').value.trim();
+        const m = input.match(/^(\d+\.\d+\.\d+\.\d+)\/(\d+)$/);
+        if (!m) { log('invalid CIDR format', 'e'); return; }
+        const prefix = parseInt(m[2]);
+        if (prefix < 16 || prefix > 30) { log('prefix must be /16-/30', 'e'); return; }
+        const ipL = ipToLong(m[1]);
+        const mask = (~0 << (32 - prefix)) >>> 0;
+        const net = (ipL & mask) >>> 0;
+        const bcast = (net | (~mask >>> 0)) >>> 0;
+        document.getElementById('ipStart').value = longToIp(net + 1);
+        document.getElementById('ipEnd').value = longToIp(bcast - 1);
+        log(`CIDR ${input} -> ${longToIp(net+1)} - ${longToIp(bcast-1)} (${bcast-net-1} hosts)`, 'i');
+    }
+
+    function setRange(s, e) {
+        document.getElementById('ipStart').value = s;
+        document.getElementById('ipEnd').value = e;
+        const t = ipToLong(e) - ipToLong(s) + 1;
+        document.getElementById('statTotal').textContent = t;
+        log(`range set: ${s} -> ${e} (${t} hosts)`, 'i');
+    }
+
+    // ===== RANDOM IP =====
+    function isPublicIP(a, b, c, d) {
+        if (a===0||a===10||a===127) return false;
+        if (a===100&&b>=64&&b<=127) return false;
+        if (a===169&&b===254) return false;
+        if (a===172&&b>=16&&b<=31) return false;
+        if (a===192&&b===0&&(c===0||c===2)) return false;
+        if (a===192&&b===88&&c===99) return false;
+        if (a===192&&b===168) return false;
+        if (a===198&&(b===18||b===19)) return false;
+        if (a===198&&b===51&&c===100) return false;
+        if (a===203&&b===0&&c===113) return false;
+        if (a>=224) return false;
+        if ([6,7,11,21,22,26,28,29,30,33,55,214,215].includes(a)) return false;
+        return true;
+    }
+
+    const CAM_PREFIXES = [
+        {min:[1,0],max:[1,255]},{min:[14,0],max:[14,255]},{min:[27,0],max:[27,255]},
+        {min:[36,0],max:[36,255]},{min:[42,0],max:[42,255]},{min:[58,0],max:[58,255]},
+        {min:[59,0],max:[59,255]},{min:[60,0],max:[60,255]},{min:[61,0],max:[61,255]},
+        {min:[62,0],max:[62,255]},{min:[77,0],max:[77,255]},{min:[78,0],max:[78,255]},
+        {min:[79,0],max:[79,255]},{min:[80,0],max:[80,255]},{min:[81,0],max:[81,255]},
+        {min:[82,0],max:[82,255]},{min:[83,0],max:[83,255]},{min:[84,0],max:[84,255]},
+        {min:[85,0],max:[85,255]},{min:[86,0],max:[86,255]},{min:[87,0],max:[87,255]},
+        {min:[88,0],max:[88,255]},{min:[89,0],max:[89,255]},{min:[90,0],max:[90,255]},
+        {min:[91,0],max:[91,255]},{min:[92,0],max:[92,255]},{min:[93,0],max:[93,255]},
+        {min:[94,0],max:[94,255]},{min:[95,0],max:[95,255]},
+        {min:[24,0],max:[24,255]},{min:[38,0],max:[38,255]},{min:[50,0],max:[50,255]},
+        {min:[63,0],max:[63,255]},{min:[64,0],max:[64,255]},{min:[65,0],max:[65,255]},
+        {min:[66,0],max:[66,255]},{min:[67,0],max:[67,255]},{min:[68,0],max:[68,255]},
+        {min:[101,0],max:[101,255]},{min:[103,0],max:[103,255]},{min:[106,0],max:[106,255]},
+        {min:[110,0],max:[110,255]},{min:[112,0],max:[112,255]},{min:[113,0],max:[113,255]},
+        {min:[114,0],max:[114,255]},{min:[115,0],max:[115,255]},{min:[116,0],max:[116,255]},
+        {min:[117,0],max:[117,255]},{min:[118,0],max:[118,255]},{min:[119,0],max:[119,255]},
+        {min:[120,0],max:[120,255]},{min:[121,0],max:[121,255]},{min:[122,0],max:[122,255]},
+        {min:[175,0],max:[175,255]},{min:[176,0],max:[176,255]},{min:[177,0],max:[177,255]},
+        {min:[178,0],max:[178,255]},{min:[179,0],max:[179,255]},{min:[180,0],max:[180,255]},
+        {min:[185,0],max:[185,255]},{min:[186,0],max:[186,255]},{min:[200,0],max:[200,255]},
+        {min:[201,0],max:[201,255]},{min:[202,0],max:[202,255]},{min:[210,0],max:[210,255]},
+        {min:[211,0],max:[211,255]},{min:[212,0],max:[212,255]},{min:[213,0],max:[213,255]},
+        {min:[217,0],max:[217,255]},{min:[218,0],max:[218,255]},{min:[219,0],max:[219,255]},
+        {min:[220,0],max:[220,255]},{min:[221,0],max:[221,255]},{min:[222,0],max:[222,255]},
+    ];
+
+    function generateRandomRange() {
+        const prefix = parseInt(document.getElementById('randomBlockSize').value);
+        let a, b, c, d, attempts = 0;
+        do {
+            if (Math.random() < 0.7 && CAM_PREFIXES.length) {
+                const block = CAM_PREFIXES[Math.floor(Math.random() * CAM_PREFIXES.length)];
+                a = block.min[0]; b = Math.floor(Math.random() * 256);
+            } else {
+                a = Math.floor(Math.random() * 224) + 1;
+                b = Math.floor(Math.random() * 256);
+            }
+            c = Math.floor(Math.random() * 256); d = 0; attempts++;
+        } while (!isPublicIP(a, b, c, d) && attempts < 500);
+        if (attempts >= 500) { log('failed to generate public IP', 'e'); return null; }
+
+        const baseIP = `${a}.${b}.${c}.${d}`;
+        const baseLong = ipToLong(baseIP);
+        const mask = (~0 << (32 - prefix)) >>> 0;
+        const net = (baseLong & mask) >>> 0;
+        const bcast = (net | (~mask >>> 0)) >>> 0;
+        const startIP = longToIp(net + 1);
+        const endIP = longToIp(bcast > net + 1 ? bcast - 1 : bcast);
+        document.getElementById('ipStart').value = startIP;
+        document.getElementById('ipEnd').value = endIP;
+        const total = (bcast - 1) - (net + 1) + 1;
+        document.getElementById('statTotal').textContent = total > 0 ? total : 1;
+        log(`random range: ${startIP} -> ${endIP} (${total > 0 ? total : 1} hosts /${prefix})`, 'i');
+        return { start: startIP, end: endIP, total: total > 0 ? total : 1 };
+    }
+
+    // ===== CAMERA IDENTIFICATION =====
+    async function identifyCamera(ip, port) {
+        if (!proxyAvailable) { log('proxy required for identification', 'e'); return null; }
+        if (!ip) {
+            ip = document.getElementById('identifyIP').value.trim();
+            port = parseInt(document.getElementById('identifyPort').value) || 80;
+        }
+        if (!ip || !validateIP(ip)) { log('invalid IP for identification', 'e'); return null; }
+
+        log(`identifying ${ip}:${port}...`, 'm');
+        const rd = document.getElementById('identifyResult');
+        rd.innerHTML = '<span class="lm">analyzing fingerprint...</span>';
+
+        try {
+            const resp = await fetch(`${PROXY_BASE}/api/identify?ip=${ip}&port=${port}&timeout=4`);
+            const data = await resp.json();
+            if (data.error) { log(`id error: ${data.error}`, 'e'); rd.innerHTML = `<span class="le">${data.error}</span>`; return null; }
+
+            displayIdentifyResult(data, rd);
+
+            if (data.identified && data.best_match) {
+                const b = data.best_match;
+                log(`${ip}:${port} -> <span style="color:var(--org)">${b.brand}</span> (${b.model}) [${b.confidence}]`, 'm');
+                b.default_creds.forEach((c, i) => {
+                    log(`  ${i+1}. user:<span class="ls">${c.user||'(empty)'}</span> pass:<span class="lw">${c.pass||'(empty)'}</span>`, 'm');
+                });
+            } else {
+                log(`${ip}:${port} -> unknown device`, 'w');
+            }
+            return data;
+        } catch(err) { log(`connection error: ${err.message}`, 'e'); rd.innerHTML = `<span class="le">proxy error</span>`; return null; }
+    }
+
+    function displayIdentifyResult(data, container) {
+        let h = '';
+        if (data.identified && data.best_match) {
+            const b = data.best_match;
+            h += `<div class="cred-box">`;
+            h += `<div style="display:flex;justify-content:space-between;align-items:center;">`;
+            h += `<span class="cred-brand">${b.brand} - ${b.model}</span>`;
+            h += `<span class="cred-conf ${b.confidence}">${b.confidence}</span></div>`;
+            h += `<table class="cred-tbl"><tr><th>USER</th><th>PASS</th></tr>`;
+            b.default_creds.forEach(c => {
+                h += `<tr><td class="${c.user?'u':'e'}">${c.user||'(empty)'}</td><td class="${c.pass?'p':'e'}">${c.pass||'(empty)'}</td></tr>`;
+            });
+            h += `</table>`;
+            if (b.notes) h += `<div style="font-size:9px;color:var(--gk);margin-top:3px;">${b.notes}</div>`;
+            if (b.matched_signatures && b.matched_signatures.length) h += `<div style="font-size:8px;color:var(--gk);margin-top:2px;">SIG: ${b.matched_signatures.join(' | ')}</div>`;
+            h += `</div>`;
+        } else {
+            h += `<div style="padding:4px;border:1px dashed var(--gk);font-size:10px;">`;
+            h += `<span class="lw">unknown device</span>`;
+            if (data.server) h += ` | server: ${data.server}`;
+            if (data.title) h += ` | title: ${data.title}`;
+            h += `</div>`;
+        }
+        container.innerHTML = h;
+    }
+
+    async function identifyAllFound() {
+        if (!proxyAvailable) { log('proxy required', 'e'); return; }
+        const ips = results.filter(r => r.open !== false);
+        if (!ips.length) { log('no results to identify', 'w'); return; }
+        log(`identifying ${ips.length} hosts...`, 'm');
+        for (const r of ips) {
+            const port = r.port || 80;
+            try {
+                const resp = await fetch(`${PROXY_BASE}/api/identify?ip=${r.ip}&port=${port}&timeout=4`);
+                const data = await resp.json();
+                if (data.identified && data.best_match) {
+                    r.camera_brand = data.best_match.brand;
+                    r.camera_model = data.best_match.model;
+                    r.default_creds = data.best_match.default_creds;
+                    r.cred_notes = data.best_match.notes;
+                    r.confidence = data.best_match.confidence;
+                    log(`${r.ip} -> <span style="color:var(--org)">${data.best_match.brand}</span>`, 'm');
+                    updateCardWithCreds(r.ip, port, data);
+                } else { log(`${r.ip} -> unknown`, 'w'); }
+            } catch(e) { log(`error: ${r.ip}: ${e.message}`, 'e'); }
+        }
+        log('batch identification complete', 's');
+    }
+
+    function updateCardWithCreds(ip, port, identifyData) {
+        const id = `cred-${ip.replace(/\./g, '-')}`;
+        let el = document.getElementById(id);
+        if (el && identifyData.best_match) { displayIdentifyResult(identifyData, el); }
+    }
+
+    async function autoIdentifyResult(ip, port) {
+        if (!proxyAvailable || document.getElementById('autoIdentify').value !== '1') return;
+        try {
+            const resp = await fetch(`${PROXY_BASE}/api/identify?ip=${ip}&port=${port}&timeout=3`);
+            const data = await resp.json();
+            if (data.identified && data.best_match) {
+                const r = results.find(x => x.ip === ip);
+                if (r) { r.camera_brand = data.best_match.brand; r.camera_model = data.best_match.model; r.default_creds = data.best_match.default_creds; r.confidence = data.best_match.confidence; }
+                log(`${ip} -> <span style="color:var(--org)">${data.best_match.brand}</span> [${data.best_match.confidence}]`, 'm');
+                data.best_match.default_creds.forEach(c => { log(`  user:<span class="ls">${c.user||'""'}</span> pass:<span class="lw">${c.pass||'""'}</span>`, 'm'); });
+                updateCardWithCreds(ip, port, data);
+            }
+        } catch(e) {}
+    }
+
+    // ===== CRED DB =====
+    function toggleCredDB() {
+        const overlay = document.getElementById('credDBOverlay');
+        credDBVisible = !credDBVisible;
+        if (!credDBVisible) { overlay.classList.remove('active'); return; }
+        overlay.classList.add('active');
+        if (credDBLoaded) return;
+        const panel = document.getElementById('credDBPanel');
+        panel.innerHTML = '<div class="lm" style="padding:20px;text-align:center;">loading credential database...</div>';
+        if (proxyAvailable) {
+            fetch(`${PROXY_BASE}/api/creds/db`).then(r => r.json()).then(d => { renderCredDB(d.cameras, panel); credDBLoaded = true; }).catch(() => { renderCredDBLocal(panel); credDBLoaded = true; });
+        } else { renderCredDBLocal(panel); credDBLoaded = true; }
+    }
+
+    function renderCredDB(cameras, container) {
+        let h = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span class="lm" style="font-size:12px;letter-spacing:2px;">CREDENTIAL DATABASE - ${cameras.length} BRANDS</span><button class="btn" onclick="toggleCredDB()">CLOSE</button></div>`;
+        h += '<div class="creddb-grid">';
+        cameras.forEach(cam => {
+            h += `<div class="creddb-card"><div class="brand">${cam.brand}</div>`;
+            cam.default_creds.forEach(c => { h += `<div class="cl">user:<span class="u">${c.user||'(empty)'}</span> pass:<span class="p">${c.pass||'(empty)'}</span></div>`; });
+            if (cam.notes) h += `<div style="font-size:8px;color:var(--gk);margin-top:2px;">${cam.notes}</div>`;
+            h += `</div>`;
+        });
+        h += '</div>';
+        container.innerHTML = h;
+    }
+
+    function renderCredDBLocal(container) {
+        const db = [
+            {brand:'Hikvision',creds:['admin:12345','admin:admin12345']},{brand:'Dahua',creds:['admin:admin','888888:888888']},
+            {brand:'Axis',creds:['root:root','root:pass']},{brand:'Foscam',creds:['admin:(empty)','admin:admin']},
+            {brand:'D-Link',creds:['admin:(empty)','admin:admin']},{brand:'Amcrest',creds:['admin:admin']},
+            {brand:'Reolink',creds:['admin:(empty)']},{brand:'Ubiquiti',creds:['ubnt:ubnt']},
+            {brand:'XMEye/DVR',creds:['admin:(empty)','default:tluafed']},{brand:'Samsung',creds:['admin:4321']},
+            {brand:'Panasonic',creds:['admin:12345']},{brand:'Mobotix',creds:['admin:meinsm']},
+            {brand:'Vivotek',creds:['root:(empty)']},{brand:'ACTi',creds:['admin:123456']},
+            {brand:'TP-Link',creds:['admin:admin']},{brand:'Bosch',creds:['service:service']},
+            {brand:'Milesight',creds:['admin:ms1234']},{brand:'Edimax',creds:['admin:1234']},
+        ];
+        let h = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span class="lm" style="font-size:12px;">CREDENTIAL DATABASE (local) - start proxy for full DB</span><button class="btn" onclick="toggleCredDB()">CLOSE</button></div><div class="creddb-grid">`;
+        db.forEach(cam => {
+            h += `<div class="creddb-card"><div class="brand">${cam.brand}</div>`;
+            cam.creds.forEach(c => { const [u,p] = c.split(':'); h += `<div class="cl">user:<span class="u">${u}</span> pass:<span class="p">${p}</span></div>`; });
+            h += `</div>`;
+        });
+        h += '</div>';
+        container.innerHTML = h;
+    }
+
+    // ===== RANDOM SCAN =====
+    async function startRandomScan() {
+        if (scanning || randomScanning) { log('scan already in progress', 'w'); return; }
+        const rounds = parseInt(document.getElementById('randomRounds').value);
+        randomScanning = true;
+        randomRoundsLeft = rounds === 0 ? Infinity : rounds;
+        randomTotalRounds = rounds === 0 ? 'INF' : rounds;
+        randomRangesScanned = 0;
+        randomTotalFound = results.length;
+        document.getElementById('btnRandom').disabled = true;
+        document.getElementById('btnStopRandom').disabled = false;
+        document.getElementById('randomStats').style.display = '';
+        document.getElementById('autoScanInd').style.display = '';
+        log(`random scan started - ${randomTotalRounds} rounds`, 'i');
+        await runRandomRound();
+    }
+
+    async function runRandomRound() {
+        if (!randomScanning || randomRoundsLeft <= 0) { finishRandomScan(); return; }
+        randomRangesScanned++; randomRoundsLeft--;
+        document.getElementById('randomRound').textContent = `${randomRangesScanned}/${randomTotalRounds}`;
+        document.getElementById('randomRangesScanned').textContent = randomRangesScanned;
+        document.getElementById('randomTotalFound').textContent = results.length;
+        log(`-- round ${randomRangesScanned}/${randomTotalRounds} --`, 'k');
+        const range = generateRandomRange();
+        if (!range) { if (randomScanning) setTimeout(() => runRandomRound(), 1000); return; }
+        await runScanForRange(range.start, range.end);
+        document.getElementById('randomTotalFound').textContent = results.length;
+        if (randomScanning && randomRoundsLeft > 0) {
+            log('next round in 2s...', 'k');
+            await new Promise(r => setTimeout(r, 2000));
+            if (randomScanning) await runRandomRound();
+        } else { finishRandomScan(); }
+    }
+
+    function stopRandomScan() { randomScanning = false; randomRoundsLeft = 0; stopScan(); finishRandomScan(); }
+
+    function finishRandomScan() {
+        randomScanning = false;
+        document.getElementById('btnRandom').disabled = false;
+        document.getElementById('btnStopRandom').disabled = true;
+        document.getElementById('autoScanInd').style.display = 'none';
+        log(`random scan done. ${randomRangesScanned} ranges, ${results.length} found`, 's');
+    }
+
+    // ===== CORE SCAN =====
+    async function runScanForRange(ipStart, ipEnd) {
+        const port = parseInt(document.getElementById('targetPort').value);
+        const timeout = parseInt(document.getElementById('timeout').value);
+        const threads = parseInt(document.getElementById('threads').value);
+        const startLong = ipToLong(ipStart), endLong = ipToLong(ipEnd);
+        totalIPs = endLong - startLong + 1;
+        scanning = true; scannedCount = 0; resultsOffset = 0; scanStartTime = Date.now();
+        document.getElementById('btnScan').disabled = true;
+        document.getElementById('btnStop').disabled = false;
+        document.getElementById('progressSection').classList.add('active');
+        document.getElementById('statTotal').textContent = totalIPs;
+        document.getElementById('statScanned').textContent = 0;
+        document.getElementById('progressTotal').textContent = totalIPs;
+        setStatus('SCANNING', 'scanning');
+        timerInterval = setInterval(updateElapsedTimer, 1000);
+        const mode = proxyAvailable ? 'TCP (proxy)' : 'BROWSER';
+        log(`scan ${totalIPs} hosts: ${ipStart} -> ${ipEnd} [port:${port} timeout:${timeout}ms mode:${mode}]`, 'i');
+
+        return new Promise(async (resolve) => {
+            if (proxyAvailable) {
+                await startProxyScan(ipStart, ipEnd, port, timeout, threads, resolve);
+            } else {
+                const ips = [];
+                for (let i = startLong; i <= endLong; i++) ips.push(longToIp(i));
+                try { await scanBatch(ips, port, timeout, threads); } catch(e) { log(e.message, 'e'); }
+                finishScan(); resolve();
+            }
+        });
+    }
+
+    // Browser scan
+    async function scanSingleIP(ip, port, timeout) {
+        return new Promise(resolve => {
+            let done = false;
+            const finish = r => { if (!done) { done = true; resolve(r); } };
+            const c = new AbortController();
+            const t1 = setTimeout(() => c.abort(), timeout);
+            fetch(`http://${ip}:${port}/`, { mode: 'no-cors', signal: c.signal })
+                .then(() => { clearTimeout(t1); finish({ open: true, ip, port, method: 'fetch', timestamp: new Date().toISOString() }); })
+                .catch(() => { clearTimeout(t1); });
+            const img = new Image();
+            const t2 = setTimeout(() => { img.src = ''; }, timeout);
+            img.onload = () => { clearTimeout(t2); finish({ open: true, ip, port, method: 'img', timestamp: new Date().toISOString() }); };
+            img.onerror = () => { clearTimeout(t2); };
+            img.src = `http://${ip}:${port}/favicon.ico?_=${Date.now()}`;
+            setTimeout(() => finish({ open: false, ip, port }), timeout + 200);
+        });
+    }
+
+    async function scanBatch(ips, port, timeout, concurrency) {
+        const queue = [...ips];
+        const workers = [];
+        for (let i = 0; i < concurrency; i++) {
+            workers.push((async () => {
+                while (queue.length && scanning) {
+                    const ip = queue.shift(); if (!ip) break;
+                    document.getElementById('currentIP').textContent = ip;
+                    try {
+                        const r = await scanSingleIP(ip, port, timeout);
+                        scannedCount++; updateProgress();
+                        if (r.open) {
+                            results.push(r);
+                            document.getElementById('statFound').textContent = results.length;
+                            log(`<span class="ls">FOUND ${ip}:${port} OPEN [${r.method}]</span>`, 's');
+                            addResultCard(ip, port, r);
+                        }
+                    } catch(e) { scannedCount++; updateProgress(); }
+                }
+            })());
+        }
+        await Promise.all(workers);
+    }
+
+    // Proxy scan
+    async function startProxyScan(ipStart, ipEnd, port, timeout, threads, doneCallback) {
+        try {
+            const url = `${PROXY_BASE}/api/scan/start?start=${ipStart}&end=${ipEnd}&port=${port}&timeout=${timeout/1000}&threads=${threads}`;
+            const resp = await fetch(url);
+            const data = await resp.json();
+            if (data.error) { log(data.error, 'e'); finishScan(); doneCallback(); return; }
+            log(`proxy scan started: ${data.total} hosts, ${data.threads} threads`, 'i');
+            statusPollInterval = setInterval(async () => { await pollScanStatus(doneCallback); }, 500);
+        } catch(err) { log(`proxy error: ${err.message}`, 'e'); finishScan(); doneCallback(); }
+    }
+
+    async function pollScanStatus(doneCallback) {
+        try {
+            const resp = await fetch(`${PROXY_BASE}/api/scan/status?offset=${resultsOffset}`);
+            const data = await resp.json();
+            scannedCount = data.scanned; totalIPs = data.total;
+            document.getElementById('statScanned').textContent = data.scanned;
+            document.getElementById('statFound').textContent = results.length;
+            document.getElementById('currentIP').textContent = data.current_ip;
+            document.getElementById('scanSpeed').textContent = data.speed;
+            const pct = data.total > 0 ? ((data.scanned / data.total) * 100) : 0;
+            document.getElementById('progressBar').style.width = pct + '%';
+            document.getElementById('progressPercent').textContent = pct.toFixed(1) + '%';
+            if (data.speed > 0) {
+                const rem = data.total - data.scanned;
+                const eta = rem / data.speed;
+                document.getElementById('eta').textContent = String(Math.floor(eta/60)).padStart(2,'0') + ':' + String(Math.floor(eta%60)).padStart(2,'0');
+            }
+            if (data.new_results && data.new_results.length) {
+                data.new_results.forEach(r => {
+                    results.push(r);
+                    const sv = r.banner ? ` [${r.banner}]` : '';
+                    const tt = r.title ? ` "${r.title}"` : '';
+                    const cam = r.is_camera ? ' <span class="lw">CAM</span>' : '';
+                    log(`<span class="ls">FOUND ${r.ip}:${r.port} OPEN${sv}${tt}${cam}</span>`, 's');
+                    addResultCard(r.ip, r.port, { method: 'TCP', ...r });
+                    setTimeout(() => autoIdentifyResult(r.ip, r.port), 300);
+                });
+                resultsOffset = data.results_offset;
+                document.getElementById('statFound').textContent = results.length;
+            }
+            if (!data.active) { clearInterval(statusPollInterval); statusPollInterval = null; finishScan(); if (doneCallback) doneCallback(); }
+        } catch(e) {}
+    }
+
+    // ===== PROGRESS =====
+    function updateProgress() {
+        const pct = totalIPs > 0 ? ((scannedCount / totalIPs) * 100) : 0;
+        document.getElementById('progressBar').style.width = pct + '%';
+        document.getElementById('progressPercent').textContent = pct.toFixed(1) + '%';
+        document.getElementById('statScanned').textContent = scannedCount;
+        document.getElementById('progressScanned').textContent = scannedCount;
+        const el = (Date.now() - scanStartTime) / 1000;
+        const spd = el > 0 ? (scannedCount / el).toFixed(1) : 0;
+        document.getElementById('scanSpeed').textContent = spd;
+        if (spd > 0) {
+            const rem = totalIPs - scannedCount;
+            const eta = rem / spd;
+            document.getElementById('eta').textContent = String(Math.floor(eta/60)).padStart(2,'0') + ':' + String(Math.floor(eta%60)).padStart(2,'0');
+        }
+    }
+
+    function updateElapsedTimer() {
+        if (!scanStartTime) return;
+        const s = Math.floor((Date.now() - scanStartTime) / 1000);
+        document.getElementById('statElapsed').textContent = String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+    }
+
+    // ===== RESULT CARDS =====
+    function addResultCard(ip, port, result) {
+        const panel = document.getElementById('resultsPanel');
+        panel.classList.add('active');
+        document.getElementById('resultCount').textContent = results.length;
+        const grid = document.getElementById('resultsGrid');
+        const card = document.createElement('div');
+        card.className = 'rcard';
+        const ipId = ip.replace(/\./g, '-');
+        const camTag = result.is_camera ? '<span class="rcard-tag">CAM</span>' : '';
+        const sv = result.banner || '';
+        const tt = result.title || '';
+        const info = [sv, tt].filter(Boolean).join(' | ') || result.method || '';
+
+        card.innerHTML = `
+            <div class="rcard-row">
+                <span class="rcard-ip">${ip}:${port}</span>
+                <span class="rcard-info">${info}</span>
+                ${camTag}
+                <div class="rcard-btns">
+                    <a class="btn" href="http://${ip}:${port}" target="_blank" style="text-decoration:none;">OPEN</a>
+                    <button class="btn" onclick="toggleDetail('${ipId}')">DETAIL</button>
+                    <button class="btn btn-mag" onclick="identifySingleCard('${ip}',${port})">ID</button>
+                    <button class="btn" onclick="copyIP('${ip}:${port}')">COPY</button>
+                </div>
+            </div>
+            <div class="rcard-detail" id="detail-${ipId}">
+                <div class="rcard-preview" id="preview-${ipId}"><span class="lt">loading preview...</span></div>
+                <div class="rcard-meta">
+                    IP: ${ip} | Port: ${port} | Method: ${result.method || 'N/A'} | Time: ${new Date().toLocaleTimeString()}
+                </div>
+                <div id="cred-${ipId}"></div>
+            </div>
+        `;
+        grid.prepend(card);
+        setTimeout(() => tryLoadPreview(ip, port), 500);
+    }
+
+    function toggleDetail(ipId) {
+        const el = document.getElementById('detail-' + ipId);
+        if (el) el.classList.toggle('open');
+    }
+
+    async function identifySingleCard(ip, port) {
+        document.getElementById('identifyIP').value = ip;
+        document.getElementById('identifyPort').value = port;
+        // Open detail
+        const ipId = ip.replace(/\./g, '-');
+        const el = document.getElementById('detail-' + ipId);
+        if (el) el.classList.add('open');
+        const data = await identifyCamera(ip, port);
+        if (data) updateCardWithCreds(ip, port, data);
+    }
+
+    function tryLoadPreview(ip, port) {
+        const ipId = ip.replace(/\./g, '-');
+        const container = document.getElementById('preview-' + ipId);
+        if (!container) return;
+
+        if (proxyAvailable) {
+            container.innerHTML = '<span class="lt">probing via proxy...</span>';
+            fetch(`${PROXY_BASE}/api/probe?ip=${ip}&port=${port}&timeout=3`)
+                .then(r => r.json()).then(data => {
+                    if (data.paths_found && data.paths_found.length) {
+                        const imgPath = data.paths_found.find(p => p.is_image || p.is_video) || data.paths_found[0];
+                        const proxyUrl = `${PROXY_BASE}/api/proxy?url=${encodeURIComponent(`http://${ip}:${port}${imgPath.path}`)}`;
+                        if (imgPath.is_image || imgPath.is_video) {
+                            const img = new Image();
+                            img.onload = () => { container.innerHTML = ''; img.style.maxWidth='100%'; img.style.maxHeight='120px'; container.appendChild(img); };
+                            img.onerror = () => { container.innerHTML = `<span class="li">${data.paths_found.length} path(s) found</span>`; };
+                            img.src = proxyUrl;
+                        } else {
+                            container.innerHTML = `<span class="li">${data.paths_found.map(p=>p.path).join(', ')}</span>`;
+                        }
+                    } else { container.innerHTML = '<span class="lt">no paths</span>'; }
+                }).catch(() => { container.innerHTML = '<span class="le">error</span>'; });
+        } else {
+            const paths = document.getElementById('camPaths').value.split(',').map(p => p.trim());
+            let loaded = false;
+            paths.forEach((path, idx) => {
+                if (loaded) return;
+                const img = new Image();
+                img.onload = () => { if (!loaded) { loaded = true; container.innerHTML = ''; img.style.maxWidth='100%'; img.style.maxHeight='120px'; container.appendChild(img); } };
+                img.onerror = () => { if (idx === paths.length - 1 && !loaded) container.innerHTML = '<span class="lt">no preview</span>'; };
+                img.src = `http://${ip}:${port}${path}?t=${Date.now()}`;
+            });
+        }
+    }
+
+    function copyIP(text) { navigator.clipboard.writeText(text).then(() => log(`copied: ${text}`, 'i')); }
+
+    // ===== MAIN SCAN =====
+    async function startScan() {
+        const ipStart = document.getElementById('ipStart').value.trim();
+        const ipEnd = document.getElementById('ipEnd').value.trim();
+        if (!validateIP(ipStart) || !validateIP(ipEnd)) { log('invalid IP range', 'e'); setStatus('ERROR', 'error'); return; }
+        const sL = ipToLong(ipStart), eL = ipToLong(ipEnd);
+        if (sL > eL) { log('start IP must be < end IP', 'e'); return; }
+        if (eL - sL + 1 > 100000) { log('range too large (max 100k)', 'e'); return; }
+        results = [];
+        document.getElementById('resultsGrid').innerHTML = '';
+        document.getElementById('resultsPanel').classList.remove('active');
+        await runScanForRange(ipStart, ipEnd);
+    }
+
+    function finishScan() {
+        scanning = false; clearInterval(timerInterval);
+        if (statusPollInterval) { clearInterval(statusPollInterval); statusPollInterval = null; }
+        updateElapsedTimer();
+        document.getElementById('btnScan').disabled = false;
+        document.getElementById('btnStop').disabled = true;
+        setStatus('COMPLETE', 'active');
+        const el = scanStartTime ? ((Date.now() - scanStartTime) / 1000).toFixed(1) : '?';
+        log(`scan complete: ${scannedCount}/${totalIPs} scanned, ${results.length} found, ${el}s`, 's');
+    }
+
+    function stopScan() {
+        scanning = false; clearInterval(timerInterval);
+        if (statusPollInterval) { clearInterval(statusPollInterval); statusPollInterval = null; }
+        if (proxyAvailable) fetch(PROXY_BASE + '/api/scan/stop').catch(() => {});
+        setStatus('STOPPED', 'error');
+        log('scan stopped by user', 'w');
+        document.getElementById('btnScan').disabled = false;
+        document.getElementById('btnStop').disabled = true;
+    }
+
+    function clearAll() {
+        results = []; scannedCount = 0; totalIPs = 0; logLines = 0;
+        document.getElementById('terminalBody').innerHTML = '';
+        document.getElementById('resultsGrid').innerHTML = '';
+        document.getElementById('resultsPanel').classList.remove('active');
+        document.getElementById('progressSection').classList.remove('active');
+        document.getElementById('statTotal').textContent = '0';
+        document.getElementById('statScanned').textContent = '0';
+        document.getElementById('statFound').textContent = '0';
+        document.getElementById('statElapsed').textContent = '00:00';
+        document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('identifyResult').innerHTML = '';
+        document.getElementById('logCount').textContent = '0 lines';
+        setStatus('READY', 'active');
+        log('cleared', 'k');
+    }
+
+    // ===== EXPORT =====
+    function exportResults(format) {
+        if (!results.length) { log('no results to export', 'w'); return; }
+        let content, filename, mime;
+        if (format === 'json') {
+            content = JSON.stringify(results, null, 2); filename = 'scan_results.json'; mime = 'application/json';
+        } else if (format === 'csv') {
+            const header = 'IP,Port,Method,Server,Title,IsCamera,Brand,Model,DefaultCreds,Timestamp\n';
+            const rows = results.map(r => `${r.ip},${r.port},${r.method||''},${r.banner||''},${(r.title||'').replace(/,/g,';')},${r.is_camera||false},${r.camera_brand||''},${r.camera_model||''},"${(r.default_creds||[]).map(c=>c.user+':'+c.pass).join('; ')}",${r.timestamp||''}`).join('\n');
+            content = header + rows; filename = 'scan_results.csv'; mime = 'text/csv';
+        } else {
+            content = `NETSCAN RESULTS\nDate: ${new Date().toISOString()}\nTotal: ${results.length}\n${'='.repeat(50)}\n\n`;
+            results.forEach(r => {
+                content += `${r.ip}:${r.port} | Server: ${r.banner||'N/A'} | Title: ${r.title||'N/A'} | Cam: ${r.is_camera||false}\n`;
+                if (r.camera_brand) {
+                    content += `  Brand: ${r.camera_brand} (${r.camera_model||'?'})\n`;
+                    (r.default_creds||[]).forEach(c => { content += `  Cred: ${c.user||'(empty)'}:${c.pass||'(empty)'}\n`; });
+                }
+                content += `  URL: http://${r.ip}:${r.port}\n\n`;
+            });
+            filename = 'scan_results.txt'; mime = 'text/plain';
+        }
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+        log(`exported: ${filename}`, 'i');
+    }
+
+    // Auto-calc total
+    ['ipStart','ipEnd'].forEach(id => {
+        document.getElementById(id).addEventListener('input', () => {
+            const s = document.getElementById('ipStart').value.trim();
+            const e = document.getElementById('ipEnd').value.trim();
+            if (validateIP(s) && validateIP(e)) {
+                const t = ipToLong(e) - ipToLong(s) + 1;
+                if (t > 0 && t <= 100000) document.getElementById('statTotal').textContent = t;
+            }
+        });
+    });
+
+    // ===== INIT =====
+    (async function init() {
+        setStatus('INIT', 'inactive');
+        log('netscan v1.0 // tcp scanner + cam fingerprint + credential lookup', 'k');
+        await checkProxy();
+        setStatus('READY', 'active');
+        log('ready. set a range or use random scanner.', 'i');
+    })();
+</script>
+</body>
+</html>
