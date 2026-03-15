@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════╗
-║              WEBCAM SCANNER - PROXY SERVER v3.0              ║
+║              WEBCAM SCANNER - PROXY SERVER v1.0              ║
 ║   Servidor proxy local para bypassear restricciones CORS     ║
 ║   + Módulo de identificación de cámaras y credenciales       ║
 ║                                                              ║
@@ -1226,15 +1226,8 @@ class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
 def banner():
     print(f"""{Colors.GREEN}
     ╔══════════════════════════════════════════════════════════╗
-    ║   {Colors.BOLD}██╗    ██╗███████╗██████╗  ██████╗ █████╗ ███╗   ███╗{Colors.RESET}{Colors.GREEN}  ║
-    ║   {Colors.BOLD}██║    ██║██╔════╝██╔══██╗██╔════╝██╔══██╗████╗ ████║{Colors.RESET}{Colors.GREEN}  ║
-    ║   {Colors.BOLD}██║ █╗ ██║█████╗  ██████╔╝██║     ███████║██╔████╔██║{Colors.RESET}{Colors.GREEN}  ║
-    ║   {Colors.BOLD}██║███╗██║██╔══╝  ██╔══██╗██║     ██╔══██║██║╚██╔╝██║{Colors.RESET}{Colors.GREEN}  ║
-    ║   {Colors.BOLD}╚███╔███╔╝███████╗██████╔╝╚██████╗██║  ██║██║ ╚═╝ ██║{Colors.RESET}{Colors.GREEN}  ║
-    ║   {Colors.BOLD} ╚══╝╚══╝ ╚══════╝╚═════╝  ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝{Colors.RESET}{Colors.GREEN}  ║
-    ║                                                          ║
-    ║           {Colors.CYAN}PROXY SERVER v3.0 - CORS BYPASS{Colors.GREEN}              ║
-    ║       {Colors.MAGENTA}+ Camera Fingerprinting & Credentials DB{Colors.GREEN}        ║
+    ║           {Colors.CYAN}PROXY SERVER v1.0 - CORS BYPASS{Colors.GREEN}                ║
+    ║       {Colors.MAGENTA}+ Camera Fingerprinting & Credentials DB{Colors.GREEN}           ║
     ╚══════════════════════════════════════════════════════════╝
     {Colors.RESET}""")
 
